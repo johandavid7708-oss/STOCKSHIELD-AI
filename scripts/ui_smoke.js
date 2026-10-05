@@ -1,0 +1,13 @@
+const fs=require('fs');let src=require('fs').readFileSync(__dirname+'/../stockshield/web/index.html','utf8').match(/<script>([\s\S]*)<\/script>/)[1];
+const els={};const mk=id=>els[id]??={innerHTML:'',value:'',classList:{toggle(){}}};
+global.document={querySelector:s=>mk(s),querySelectorAll:()=>[]};global.location={hash:''};global.addEventListener=()=>{};
+const _f=fetch;global.fetch=(u,o)=>_f('http://localhost:8000'+u,o);
+(async()=>{eval(src+';globalThis.T={dash,medPage,alertsPage,modelPage,sim,table,stockout,demo,preset}');const out=[];const seen=[];{let v='';Object.defineProperty(mk('#app'),'innerHTML',{get:()=>v,set:x=>{v=x;seen.push(x)}})}
+await T.dash();const d=els['#app'].innerHTML;out.push(['dashboard KPIs',/Medicines monitored<\/span><b>3972/.test(d)&&/High-risk/.test(d)]);
+for(const k of ['q','fc','fs','fr','fx','so'])mk('#'+k);els['#so'].value='risk_probability';els['#q'].value='';T.table();out.push(['table rows',(els['#tbl'].innerHTML.match(/class="c"/g)||[]).length===6]);
+for(const id of [1,2,3,4,5,6]){await T.medPage(String(id));const h=els['#app'].innerHTML;if(!/Why this risk level/.test(h)||!/Model forecast/.test(h)||!/<polyline/.test(h)||!/Reorder recommendation/.test(h)||!/Inventory health/.test(h)||!/Censored demand/.test(h))out.push(['med'+id,false])}
+out.push(['medicine pages 1-6',!out.some(x=>/^med\d/.test(x[0]))]);
+await T.medPage('1');for(const k of ['s1','s2','s3','simr'])mk('#'+k);els['#s1'].value=10;els['#s2'].value=5;els['#s3'].value=500;await T.sim(1);out.push(['what-if',/stock-out probability/.test(els['#simr'].innerHTML)]);
+await T.alertsPage();out.push(['alerts',/Alert center/.test(els['#app'].innerHTML)]);await T.modelPage();out.push(['model',/synthetic/.test(els['#app'].innerHTML)&&/Data trust/.test(els['#app'].innerHTML)]);
+await T.medPage('2');await T.preset(2,'surge');out.push(['scenario preset (demand surge) runs backend',/Current/.test(els['#simr'].innerHTML)&&/scenario stock-out probability/.test(els['#simr'].innerHTML)]);await T.stockout();out.push(['stock-out command center',/Critical medicines/.test(els['#app'].innerHTML)&&/#1 /.test(els['#app'].innerHTML)]);await T.demo();out.push(['judge demo mode',/Judge demo mode/.test(els['#app'].innerHTML)&&/Apply Demand Surge/.test(els['#app'].innerHTML)]);let bad=false;try{await T.medPage('999')}catch(e){bad=/not found/.test(e.message)}out.push(['invalid id error',bad]);
+out.push(['no NaN/undefined/[object]/null text in '+seen.length+' renders',!seen.some(h=>/NaN|undefined|\[object|>null</.test(h))]);if(process.env.DUMP)require('fs').writeFileSync(process.env.DUMP,JSON.stringify(seen));console.log(out.map(([n,o])=>(o?'PASS ':'FAIL ')+n).join('\n'))})().catch(e=>console.log('CRASH',e.message))
